@@ -24,7 +24,7 @@ import android.widget.Toast;
 import com.readkakaotalk.app.R;
 import com.readkakaotalk.app.service.MyAccessibilityService;
 import com.readkakaotalk.app.service.MyNotificationService;
-import com.readkakaotalk.app.ml.TorchModelManager;
+import com.readkakaotalk.app.model.TorchModelManager;
 
 import java.util.List;
 import java.util.Set;

@@ -69,15 +69,13 @@ public class MainActivity extends AppCompatActivity {
                     @SuppressLint("SetTextI18n")
                     @Override
                     public void onReceive(Context context, Intent intent) {
-                        String time = intent.getStringExtra(MyNotificationService.EXTRA_TIME);
                         String name = intent.getStringExtra(MyNotificationService.EXTRA_NAME);
                         String text = intent.getStringExtra(MyNotificationService.EXTRA_TEXT);
-                        String room = intent.getStringExtra(MyNotificationService.EXTRA_ROOM);
-                        if (room == null) room = "개인 채팅";
-                        messages.setText("시간: " + time + "\n이름: " + name + "\n메시지: " + text + "\n채팅방: " + room + "\n\n" + messages.getText());
+                        messages.setText("이름: " + name + "\n메시지: " + text + "\n\n" + messages.getText());
                     }
                 }, new IntentFilter(MyNotificationService.ACTION_NOTIFICATION_BROADCAST)
         );
+
         LocalBroadcastManager.getInstance(this).registerReceiver(
                 new BroadcastReceiver() {
                     @SuppressLint("SetTextI18n")
@@ -91,12 +89,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void processMessageWithAI(String sender, String message) {
-        // 모델 실행
-        String result = torchModelManager.processText(message);
+        // 사기 판별 모델 실행
+        String fraudResult = torchModelManager.detectFraud(message);
         
-        // 결과 처리
-        Log.d("AI_RESULT", "Input: " + message + ", Output: " + result);
-        Toast.makeText(this, "AI Result: " + result, Toast.LENGTH_SHORT).show();
+        // 감정 분류 모델 실행
+        String emotionResult = torchModelManager.classifyEmotion(message);
+        
+        // 결과 처리 및 화면에 출력
+        String resultText = "이름: " + sender + "\n메시지: " + message + "\n" +
+                            fraudResult + "\n" + emotionResult + "\n\n";
+        Log.d("AI_RESULT", resultText);
+        Toast.makeText(this, "AI Result: " + fraudResult + ", " + emotionResult, Toast.LENGTH_SHORT).show();
+        
+        // EditText에 결과 추가
+        EditText messages = findViewById(R.id.editTextTextMultiLine);
+        messages.setText(resultText + messages.getText());
     }
 
     @Override

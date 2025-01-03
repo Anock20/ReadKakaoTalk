@@ -1,4 +1,4 @@
-package com.readkakaotalk.app.ml;
+package com.readkakaotalk.app.model;
 
 import android.content.Context;
 import android.util.Log;
@@ -82,5 +82,33 @@ public class TorchModelManager {
             }
             return file.getAbsolutePath();
         }
+    }
+
+    public String detectFraud(String message) {
+        // TODO: 사기 판별 모델 실행 로직 구현
+        // 예: 모델 실행 후 이진값(퍼센트) 반환
+        // 아래는 예시로, 실제 모델 로직에 맞게 구현해야 합니다.
+        float fraudProbability = runFraudDetectionModel(message);
+        return "Fraud Probability: " + (fraudProbability * 100) + "%";
+    }
+
+    public String classifyEmotion(String message) {
+        // TODO: 감정 분류 모델 실행 로직 구현
+        // 예: 모델 실행 후 여섯 개의 감정 중 하나 반환
+        // 아래는 예시로, 실제 모델 로직에 맞게 구현해야 합니다.
+        String emotion = runEmotionClassificationModel(message);
+        return "Emotion: " + emotion;
+    }
+
+    private float runFraudDetectionModel(String message) {
+        // TODO: 사기 판별 모델 실행 로직 구현
+        // 예시: 모델을 실행하고 결과를 반환
+        return 0.85f; // 예시
+    }
+
+    private String runEmotionClassificationModel(String message) {
+        // TODO: 감정 분류 모델 실행 로직 구현
+        // 예시: 모델을 실행하고 결과를 반환
+        return "Happy"; // 예시
     }
 } 

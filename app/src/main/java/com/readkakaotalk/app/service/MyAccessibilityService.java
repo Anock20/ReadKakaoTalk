@@ -170,8 +170,6 @@ public class MyAccessibilityService extends AccessibilityService {
     // 여기에 isChildButton, isChildTextView 등의 헬퍼 메서드를 추가합니다.
 
 
-
-
     private boolean checkChildClass(final AccessibilityNodeInfo node, final int index, final String className) {
         final AccessibilityNodeInfo child = node.getChild(index);
         if (child == null) return false;

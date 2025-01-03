@@ -14,6 +14,9 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.util.Log;
 import android.view.accessibility.AccessibilityManager;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -21,6 +24,7 @@ import android.widget.Toast;
 import com.readkakaotalk.app.R;
 import com.readkakaotalk.app.service.MyAccessibilityService;
 import com.readkakaotalk.app.service.MyNotificationService;
+import com.readkakaotalk.app.ml.TorchModelManager;
 
 import java.util.List;
 import java.util.Set;
@@ -29,13 +33,36 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
 
     private AlertDialog dialog = null;
+    private TorchModelManager torchModelManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        final EditText messages = (EditText) findViewById(R.id.editTextTextMultiLine);
+        final EditText messages = findViewById(R.id.editTextTextMultiLine);
+
+        // 모델 매니저 초기화
+        torchModelManager = new TorchModelManager(this);
+
+        // TextWatcher를 사용하여 EditText의 텍스트 변경 감지
+        messages.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                // 텍스트 변경 전 처리할 내용이 있으면 여기에 작성
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                // 텍스트가 변경될 때마다 AI 모델에 전달
+                processMessageWithAI("User", s.toString());
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                // 텍스트 변경 후 처리할 내용이 있으면 여기에 작성
+            }
+        });
 
         LocalBroadcastManager.getInstance(this).registerReceiver(
                 new BroadcastReceiver() {
@@ -63,6 +90,14 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
+    private void processMessageWithAI(String sender, String message) {
+        // 모델 실행
+        String result = torchModelManager.processText(message);
+        
+        // 결과 처리
+        Log.d("AI_RESULT", "Input: " + message + ", Output: " + result);
+        Toast.makeText(this, "AI Result: " + result, Toast.LENGTH_SHORT).show();
+    }
 
     @Override
     protected void onResume() {
@@ -102,9 +137,6 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
     }
-
-
-
 
     // 서비스가 실행 중인지 확인하는 함수
     private boolean isMyServiceRunning(Class<?> serviceClass) {

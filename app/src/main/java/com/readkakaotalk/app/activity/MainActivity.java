@@ -25,15 +25,26 @@ import com.readkakaotalk.app.R;
 import com.readkakaotalk.app.service.MyAccessibilityService;
 import com.readkakaotalk.app.service.MyNotificationService;
 import com.readkakaotalk.app.model.TorchModelManager;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.readkakaotalk.app.R;
+import com.readkakaotalk.app.service.ApiService;
+import com.readkakaotalk.app.service.RetrofitClient;
+
+import okhttp3.MediaType;
+import okhttp3.RequestBody;
+import okhttp3.ResponseBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 import java.util.List;
 import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
-
     private AlertDialog dialog = null;
-    private TorchModelManager torchModelManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,9 +52,6 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         final EditText messages = findViewById(R.id.editTextTextMultiLine);
-
-        // 모델 매니저 초기화
-        torchModelManager = new TorchModelManager(this);
 
         // TextWatcher를 사용하여 EditText의 텍스트 변경 감지
         messages.addTextChangedListener(new TextWatcher() {
@@ -54,8 +62,8 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                // 텍스트가 변경될 때마다 AI 모델에 전달
-                processMessageWithAI("User", s.toString());
+                // 텍스트가 변경될 때마다 Flask 서버에 전송
+                sendTextToServer(s.toString());
             }
 
             @Override
@@ -88,23 +96,6 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
-    private void processMessageWithAI(String sender, String message) {
-        // 사기 판별 모델 실행
-        String fraudResult = torchModelManager.detectFraud(message);
-        
-        // 감정 분류 모델 실행
-        String emotionResult = torchModelManager.classifyEmotion(message);
-        
-        // 결과 처리 및 화면에 출력
-        String resultText = "이름: " + sender + "\n메시지: " + message + "\n" +
-                            fraudResult + "\n" + emotionResult + "\n\n";
-        Log.d("AI_RESULT", resultText);
-        Toast.makeText(this, "AI Result: " + fraudResult + ", " + emotionResult, Toast.LENGTH_SHORT).show();
-        
-        // EditText에 결과 추가
-        EditText messages = findViewById(R.id.editTextTextMultiLine);
-        messages.setText(resultText + messages.getText());
-    }
 
     @Override
     protected void onResume() {
@@ -174,4 +165,45 @@ public class MainActivity extends AppCompatActivity {
         }
         return false;
     }
+    private void sendTextToServer(String message) {
+        // JSON 형식의 RequestBody 생성
+        RequestBody requestBody = RequestBody.create(MediaType.parse("application/json"), message);
+
+        // Retrofit 클라이언트에서 ApiService 인스턴스 가져오기
+        ApiService apiService = RetrofitClient.getApiService();
+
+        // Flask 서버로 요청 보내기
+        Call<ResponseBody> call = apiService.sendText(requestBody);
+        call.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                if (response.isSuccessful()) {
+                    try {
+                        // 서버 응답 처리
+                        String responseText = response.body().string();
+                        Log.d(TAG, "Server Response: " + responseText);
+
+                        // 서버에서 받은 결과를 UI에 반영
+                        runOnUiThread(() -> {
+                            EditText messages = findViewById(R.id.editTextTextMultiLine);
+                            messages.setText("Server Response: \n" + responseText + "\n\n" + messages.getText());
+                        });
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error reading server response", e);
+                    }
+                } else {
+                    Log.e(TAG, "Server request failed with code: " + response.code());
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                Log.e(TAG, "Server connection failed", t);
+                runOnUiThread(() -> {
+                    Toast.makeText(MainActivity.this, "Failed to connect to server", Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+    }
+
 }

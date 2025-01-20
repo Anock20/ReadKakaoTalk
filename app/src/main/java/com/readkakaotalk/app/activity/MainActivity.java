@@ -18,6 +18,7 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.accessibility.AccessibilityManager;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -32,6 +33,8 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import com.readkakaotalk.app.R;
 import com.readkakaotalk.app.service.ApiService;
 import com.readkakaotalk.app.service.RetrofitClient;
+
+import org.json.JSONObject;
 
 import okhttp3.MediaType;
 import okhttp3.RequestBody;
@@ -70,8 +73,13 @@ public class MainActivity extends AppCompatActivity {
             public void afterTextChanged(Editable s) {
                 // 텍스트 변경 후 처리할 내용이 있으면 여기에 작성
             }
-        });
 
+        });
+        Button buttonGoToResult = findViewById(R.id.buttonGoToResult); // activity_main.xml에 정의된 버튼 ID
+        buttonGoToResult.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, ResultActivity.class);
+            startActivity(intent);
+        });
         LocalBroadcastManager.getInstance(this).registerReceiver(
                 new BroadcastReceiver() {
                     @SuppressLint("SetTextI18n")
@@ -166,44 +174,49 @@ public class MainActivity extends AppCompatActivity {
         return false;
     }
     private void sendTextToServer(String message) {
-        // JSON 형식의 RequestBody 생성
-        RequestBody requestBody = RequestBody.create(MediaType.parse("application/json"), message);
+        try {
+            // JSON 객체 생성
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("text", message);
 
-        // Retrofit 클라이언트에서 ApiService 인스턴스 가져오기
-        ApiService apiService = RetrofitClient.getApiService();
+            // RequestBody 생성
+            RequestBody requestBody = RequestBody.create(
+                    MediaType.parse("application/json"), jsonObject.toString());
 
-        // Flask 서버로 요청 보내기
-        Call<ResponseBody> call = apiService.sendText(requestBody);
-        call.enqueue(new Callback<ResponseBody>() {
-            @Override
-            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
-                if (response.isSuccessful()) {
-                    try {
-                        // 서버 응답 처리
-                        String responseText = response.body().string();
-                        Log.d(TAG, "Server Response: " + responseText);
+            ApiService apiService = RetrofitClient.getApiService();
+            Call<ResponseBody> call = apiService.sendText(requestBody);
+            call.enqueue(new Callback<ResponseBody>() {
+                @Override
+                public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                    if (response.isSuccessful()) {
+                        try {
+                            String responseText = response.body().string();
+                            Log.d(TAG, "Server Response: " + responseText);
 
-                        // 서버에서 받은 결과를 UI에 반영
-                        runOnUiThread(() -> {
-                            EditText messages = findViewById(R.id.editTextTextMultiLine);
-                            messages.setText("Server Response: \n" + responseText + "\n\n" + messages.getText());
-                        });
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error reading server response", e);
+                            // 새로운 Activity로 응답 전달
+                            Intent intent = new Intent(MainActivity.this, ResultActivity.class);
+                            intent.putExtra("SERVER_RESPONSE", responseText);
+                            startActivity(intent);
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error reading server response", e);
+                        }
+                    } else {
+                        Log.e(TAG, "Server request failed with code: " + response.code());
                     }
-                } else {
-                    Log.e(TAG, "Server request failed with code: " + response.code());
                 }
-            }
 
-            @Override
-            public void onFailure(Call<ResponseBody> call, Throwable t) {
-                Log.e(TAG, "Server connection failed", t);
-                runOnUiThread(() -> {
-                    Toast.makeText(MainActivity.this, "Failed to connect to server", Toast.LENGTH_SHORT).show();
-                });
-            }
-        });
+                @Override
+                public void onFailure(Call<ResponseBody> call, Throwable t) {
+                    Log.e(TAG, "Server connection failed", t);
+                    runOnUiThread(() -> {
+                        Toast.makeText(MainActivity.this, "Failed to connect to server", Toast.LENGTH_SHORT).show();
+                    });
+                }
+            });
+        } catch (Exception e) {
+            Log.e(TAG, "Error creating JSON object", e);
+        }
     }
+
 
 }
